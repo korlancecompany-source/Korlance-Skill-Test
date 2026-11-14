@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Korlance Test Camp | Placement Assessment Portal</title>
+<link rel="icon" href="logo.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="bg"><i></i><i></i><i></i><i></i></div>
+
+<!-- ============ REGISTER ============ -->
+<section id="screen-reg" class="landing">
+  <div class="hero">
+    <div class="brandrow"><img class="logo" src="logo.jpg" alt="Korlance"><div><b>Korlance Test Camp</b><small>Placement Assessment Portal</small></div></div>
+    <h1>One sitting. One hour.<br>Your skills, measured fairly.</h1>
+    <p class="lead">A structured screening round that mirrors how companies hire: domain MCQs followed by live coding with test cases, under fair online proctoring.</p>
+    <div class="total"><strong>60</strong><span>minutes in total<br><small>one timer covers MCQ and coding</small></span></div>
+    <ol class="flow">
+      <li><b>Domain MCQs</b><span>30 questions in your chosen domain. Move freely and change answers.</span></li>
+      <li><b>Coding round</b><span>Open it any time with one button. Run against 5 to 10 test cases, some hidden.</span></li>
+      <li><b>Auto evaluation</b><span>Submit, or the test submits itself when the 60 minutes end. Results reach you from the Korlance team.</span></li>
+    </ol>
+    <p class="note">Keep your resume (PDF or Word, up to 3 MB) ready. The test runs in full screen and tab switches are recorded.</p>
+  </div>
+  <div class="card">
+    <h2>Student Registration</h2>
+    <p class="sub">Fill your details carefully. They cannot be changed after you start.</p>
+    <form id="regForm" novalidate>
+      <label class="f">Full Name *</label><input class="in" id="f_name" placeholder="As per college records" autocomplete="name">
+      <label class="f">College Name *</label><input class="in" id="f_college" placeholder="Your college name">
+      <div class="grid2">
+        <div><label class="f">Department *</label><input class="in" id="f_dept" placeholder="e.g. CSE, IT, ECE, EEE, MECH"></div>
+        <div><label class="f">Scroll / Register Number *</label><input class="in" id="f_scroll" placeholder="Register number"></div>
+      </div>
+      <label class="f">Domain *</label><select class="in" id="f_domain"><option value="">Select your domain</option></select>
+      <div class="grid2">
+        <div><label class="f">Email *</label><input class="in" id="f_email" type="email" placeholder="you@gmail.com" autocomplete="email"></div>
+        <div><label class="f">Mobile Number *</label><input class="in" id="f_phone" inputmode="numeric" maxlength="10" placeholder="10-digit number"></div>
+      </div>
+      <label class="f">Upload Resume * (PDF / Word, max 3 MB)</label>
+      <div class="file"><input type="file" id="f_resume" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"></div>
+      <div class="err hidden" id="regErr"></div>
+      <button class="btn block" id="regBtn" type="submit">Continue →</button>
+    </form>
+  </div>
+</section>
+
+<!-- ============ RESUME SESSION ============ -->
+<section id="screen-resume" class="center hidden"><div class="panel" style="max-width:520px;text-align:center">
+  <div style="font-size:48px">🔄</div><h2>Unfinished test found</h2>
+  <p id="resumeTxt" style="color:#4b3f78"></p>
+  <p style="font-size:13px;color:#b4232a">Reloading the page counts as 1 tab-switch warning. Your timer kept running.</p>
+  <button class="btn" id="resumeBtn">Resume Test</button>
+</div></section>
+
+<!-- ============ INSTRUCTIONS ============ -->
+<section id="screen-instr" class="center hidden"><div class="panel">
+  <h2>Welcome, <span id="i_name"></span> 👋</h2>
+  <div class="info" id="i_info"></div>
+  <ol class="rules">
+    <li>The test runs in <b>full-screen</b>. Do not switch tabs, minimise or leave the window.</li>
+    <li>Every tab switch / window change gives a <b>warning</b>. On the <b id="i_max"></b>th warning the test is <b>auto-submitted</b>.</li>
+    <li>Questions and options are shuffled for every student. You can move freely between questions and change answers.</li>
+    <li>Coding: choose your language, press <b>Run</b> to try custom input, and <b>Run All Test Cases</b> to check against 5-10 test cases (some hidden). Marks = test cases passed.</li>
+    <li>Copy / paste and right-click are disabled. Do not refresh the page.</li>
+    <li>Press <b>Submit Test</b> when finished. If the timer ends, your test is submitted automatically.</li>
+  </ol>
+  <label style="display:flex;gap:10px;align-items:center;font-size:14px;margin:14px 0"><input type="checkbox" id="agree"> I have read and agree to the rules above.</label>
+  <button class="btn" id="startBtn" disabled>Start Test</button>
+</div></section>
+
+<!-- ============ TEST ============ -->
+<section id="screen-test" class="hidden">
+  <div class="top">
+    <img src="logo.jpg" alt=""><div class="brand">Korlance Test Camp<small id="t_domain"></small></div>
+    <div class="sp"></div>
+    <div class="pill" id="t_warn">Warnings 0/3</div>
+    <div class="pill time" id="t_time">--:--</div>
+    <button class="btn ok sm" id="submitBtn">Submit Test</button>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="body">
+    <div id="v_mcq" class="mcq">
+      <div>
+        <div class="qno" id="q_no"></div>
+        <div class="qtext" id="q_text"></div>
+        <div id="q_opts"></div>
+        <div class="nav">
+          <button class="btn ghost" id="q_prev">← Previous</button>
+          <button class="btn ghost" id="q_clear">Clear Answer</button>
+          <button class="btn" id="q_next">Save &amp; Next →</button>
+        </div>
+      </div>
+      <div class="pal"><h4>Question Palette</h4><div class="pgrid" id="pgrid"></div>
+        <div class="legend"><span><i></i>Answered</span><span><i class="u"></i>Not answered</span></div>
+        <p id="q_count" style="font-size:13px;color:var(--mut)"></p>
+        <button class="btn block go" id="toCode" type="button">Finished MCQ? Go to Coding Round →</button></div>
+    </div>
+    <div id="v_code" class="hidden">
+      <div class="ptabs" id="ptabs"></div>
+      <div class="code">
+        <div class="prob" id="prob"></div>
+        <div>
+          <div class="ed"><div class="edbar"><span>Language</span><select id="langSel"></select><span style="flex:1"></span><span id="edHint" style="opacity:.7">Paste is disabled</span></div><div id="editor"></div></div>
+          <div class="runbar">
+            <button class="btn sm" id="runBtn">▶ Run</button>
+            <button class="btn ok sm" id="runAllBtn">✔ Run All Test Cases</button>
+            <button class="btn ghost sm" id="resetBtn">Reset Code</button>
+          </div>
+          <label class="f" id="cinLabel" style="margin:0">Custom input (stdin)</label>
+          <textarea class="cin" id="cin" spellcheck="false"></textarea>
+          <div class="res" id="res"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DONE ============ -->
+<section id="screen-done" class="center hidden"><div class="panel done" style="text-align:center;max-width:560px">
+  <div class="ic" id="d_ic">✅</div><h2 id="d_h">Test submitted successfully!</h2>
+  <p id="d_p" style="color:#4b3f78;line-height:1.6"></p>
+  <div id="d_actions"></div>
+</div></section>
+
+<div id="modal" class="modal hidden"><div class="mbox"><div class="ic" id="m_ic">⚠️</div><h3 id="m_h"></h3><p id="m_p"></p><div class="row" id="m_row"></div></div></div>
+<div id="demoBar" class="demo hidden">Demo mode: backend not connected, nothing is saved</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/sql/sql.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script src="config.js"></script>
+<script src="qa.js"></script><script src="qb.js"></script><script src="qc.js"></script><script src="qd.js"></script>
+<script src="coding.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
