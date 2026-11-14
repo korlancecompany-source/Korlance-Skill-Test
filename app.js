@@ -36,6 +36,11 @@ $("#i_max").textContent = C.MAX_TAB_WARNINGS;
 try { const old = JSON.parse(localStorage.getItem(SKEY) || "null");
   if (old && !old.submitted && old.endAt) { S._old = old; $("#resumeTxt").textContent = `${old.student.name}, your ${DNAME[old.key]} test is still in progress.`; show("resume"); } } catch (e) {}
 
+/* already submitted on this device -> show the final page again */
+const DONE_KEY = "korlance_done";
+try { const dn = JSON.parse(localStorage.getItem(DONE_KEY) || "null");
+  if (dn && dn.id) { S.student = { name:dn.name, scroll:dn.scroll, email:dn.email }; S.key = dn.key; S.id = dn.id; S.submitted = true; S.active = false; showFinal(dn.at, true); } } catch (e) {}
+
 /* ---------------- backend ---------------- */
 async function api(payload) {
   if (!C.APPS_SCRIPT_URL) return { ok:true, id:"DEMO-" + Date.now().toString(36).toUpperCase(), demo:true };
@@ -56,12 +61,17 @@ $("#regForm").addEventListener("submit", async e => {
   if (!/^[6-9]\d{9}$/.test(d.phone)) return fail("Enter a valid 10-digit mobile number.");
   const f = $("#f_resume").files[0];
   /* resume is optional */
-  if (!/\.(pdf|doc|docx)$/i.test(f.name)) return fail("Resume must be a PDF, DOC or DOCX file.");
+  if (f && !/\.(pdf|doc|docx)$/i.test(f.name)) return fail("Resume must be a PDF, DOC or DOCX file.");
   if (f && f.size > C.MAX_RESUME_MB * 1048576) return fail(`Resume must be under ${C.MAX_RESUME_MB} MB.`);
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Saving...';
   try {
     const b64 = f ? await fileToB64(f) : "";
     const res = await api({ action:"register", ...d, domainName:DNAME[d.domain], resume:f ? { name:f.name, mime:f.type || "application/octet-stream", data:b64 } : null });
+    if (res.duplicate) {
+      S.student = { name:d.name, scroll:d.scroll, email:d.email }; S.key = res.domainName; S.id = res.id; S.submitted = true;
+      btn.disabled = false; btn.textContent = "Continue →";
+      showFinal(res.at ? new Date(res.at).toISOString() : new Date().toISOString(), true, "", null, res.status !== "Submitted"); return;
+    }
     if (!res.ok) throw new Error(res.error || "Registration failed");
     S.student = d; S.id = res.id; S.key = d.domain;
     $("#i_name").textContent = d.name;
@@ -344,14 +354,20 @@ async function submitTest(reason) {
   }
 }
 function finishScreen(reason, p) {
+  const at = new Date().toISOString();
+  try { localStorage.setItem(DONE_KEY, JSON.stringify({ id:S.id, key:S.key, name:S.student.name, scroll:S.student.scroll, email:S.student.email, at })); localStorage.removeItem(SKEY); } catch (e) {}
+  showFinal(at, false, reason, p);
+}
+function showFinal(at, again, reason, p, started) {
   const ic = $("#d_ic"); ic.textContent = "\u2713"; ic.classList.add("ok");
-  $("#d_h").textContent = "Assessment Submitted";
-  let t = "Thank you! Your responses have been recorded successfully. The Korlance team will contact you with the results. You may now close this window.";
-  if (/Auto-submitted|Time over/.test(reason)) t += `<br><span style="color:#b4232a">${esc(reason)}</span>`;
-  if (C.SHOW_SCORE_TO_STUDENT) t += `<br>Score: <b>${p.totalScore} / ${p.maxScore}</b>`;
+  $("#d_h").textContent = started ? "Attempt Already Recorded" : "Assessment Submitted";
+  let t = started ? "This email or mobile number has already been used to attempt this assessment. Only one attempt is allowed. The Korlance team will contact you if needed. You may now close this window." : again ? "You have already completed this assessment. Your responses have been recorded. The Korlance team will contact you with the results. You may now close this window."
+    : "Thank you! Your responses have been recorded successfully. The Korlance team will contact you with the results. You may now close this window.";
+  if (!again && /Auto-submitted|Time over/.test(reason || "")) t += `<br><span style="color:#b4232a">${esc(reason)}</span>`;
+  if (!again && p && C.SHOW_SCORE_TO_STUDENT) t += `<br>Score: <b>${p.totalScore} / ${p.maxScore}</b>`;
   $("#d_p").innerHTML = t;
   const st = S.student, row = (k, v) => `<tr><td>${k}</td><td><b>${esc(String(v))}</b></td></tr>`;
-  $("#d_tbl").innerHTML = row("Name", st.name) + row("Domain", DNAME[S.key].split(" (")[0]) + row("Register No", st.scroll) + row("Email", st.email) + row("Reg ID", S.id) + row("Submitted at", new Date().toLocaleString("en-IN"));
+  $("#d_tbl").innerHTML = row("Name", st.name) + row("Domain", (DNAME[S.key] || S.key).split(" (")[0]) + row("Register No", st.scroll) + row("Email", st.email) + row("Reg ID", S.id) + row(started ? "Attempted at" : "Submitted at", new Date(at).toLocaleString("en-IN"));
   $("#d_actions").innerHTML = ""; show("done");
 }
 })();

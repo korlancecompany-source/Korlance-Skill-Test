@@ -42,10 +42,13 @@ function folder_() {
 function register_(d) {
   const sh = sheet_('Students', HEADERS);
   const rows = sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, HEADERS.length).getValues() : [];
-  const email = String(d.email).toLowerCase();
+  const email = String(d.email).toLowerCase().trim();
+  const phone = String(d.phone).replace(/\D/g, '').slice(-10);
   for (const r of rows) {
-    if (String(r[7]).toLowerCase() === email && String(r[6]) === d.domainName)
-      return { ok: false, error: 'This email has already attempted the ' + d.domainName + ' test.' };
+    const sameEmail = String(r[7]).toLowerCase().trim() === email;
+    const samePhone = phone && String(r[8]).replace(/\D/g, '').slice(-10) === phone;
+    if (sameEmail || samePhone)
+      return { ok: false, duplicate: true, id: r[0], domainName: r[6], status: r[10], at: r[23] || r[1] || '' };
   }
   const id = 'KTC-' + Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyMMdd') + '-' + String(sh.getLastRow()).padStart(4, '0');
   let file = null;
