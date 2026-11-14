@@ -26,7 +26,7 @@
       <li><b>Coding round</b><span>Open it any time with one button. Run against 5 to 10 test cases, some hidden.</span></li>
       <li><b>Auto evaluation</b><span>Submit, or the test submits itself when the 60 minutes end. Results reach you from the Korlance team.</span></li>
     </ol>
-    <p class="note">Keep your resume (PDF or Word, up to 3 MB) ready. The test runs in full screen and tab switches are recorded.</p>
+    <p class="note">The test runs in full screen and tab switches are recorded.</p>
   </div>
   <div class="card">
     <h2>Student Registration</h2>
@@ -43,7 +43,7 @@
         <div><label class="f">Email *</label><input class="in" id="f_email" type="email" placeholder="you@gmail.com" autocomplete="email"></div>
         <div><label class="f">Mobile Number *</label><input class="in" id="f_phone" inputmode="numeric" maxlength="10" placeholder="10-digit number"></div>
       </div>
-      <label class="f">Upload Resume * (PDF / Word, max 3 MB)</label>
+      <label class="f">Upload Resume (optional, PDF / Word, max 3 MB)</label>
       <div class="file"><input type="file" id="f_resume" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"></div>
       <div class="err hidden" id="regErr"></div>
       <button class="btn block" id="regBtn" type="submit">Continue →</button>
@@ -124,9 +124,9 @@
 
 <!-- ============ DONE ============ -->
 <section id="screen-done" class="center hidden"><div class="panel done" style="text-align:center;max-width:560px">
-  <div class="ic" id="d_ic">✅</div><h2 id="d_h">Test submitted successfully!</h2>
+  <img class="dlogo" src="logo.jpg" alt="Korlance"><div class="ic" id="d_ic">✓</div><h2 id="d_h">Assessment Submitted</h2>
   <p id="d_p" style="color:#4b3f78;line-height:1.6"></p>
-  <div id="d_actions"></div>
+  <table class="dtbl" id="d_tbl"></table><div id="d_actions"></div>
 </div></section>
 
 <div id="modal" class="modal hidden"><div class="mbox"><div class="ic" id="m_ic">⚠️</div><h3 id="m_h"></h3><p id="m_p"></p><div class="row" id="m_row"></div></div></div>

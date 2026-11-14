@@ -55,13 +55,13 @@ $("#regForm").addEventListener("submit", async e => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.email)) return fail("Enter a valid email address.");
   if (!/^[6-9]\d{9}$/.test(d.phone)) return fail("Enter a valid 10-digit mobile number.");
   const f = $("#f_resume").files[0];
-  if (!f) return fail("Please upload your resume (PDF or Word).");
+  /* resume is optional */
   if (!/\.(pdf|doc|docx)$/i.test(f.name)) return fail("Resume must be a PDF, DOC or DOCX file.");
-  if (f.size > C.MAX_RESUME_MB * 1048576) return fail(`Resume must be under ${C.MAX_RESUME_MB} MB.`);
+  if (f && f.size > C.MAX_RESUME_MB * 1048576) return fail(`Resume must be under ${C.MAX_RESUME_MB} MB.`);
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Saving...';
   try {
-    const b64 = await fileToB64(f);
-    const res = await api({ action:"register", ...d, domainName:DNAME[d.domain], resume:{ name:f.name, mime:f.type || "application/octet-stream", data:b64 } });
+    const b64 = f ? await fileToB64(f) : "";
+    const res = await api({ action:"register", ...d, domainName:DNAME[d.domain], resume:f ? { name:f.name, mime:f.type || "application/octet-stream", data:b64 } : null });
     if (!res.ok) throw new Error(res.error || "Registration failed");
     S.student = d; S.id = res.id; S.key = d.domain;
     $("#i_name").textContent = d.name;
@@ -344,11 +344,14 @@ async function submitTest(reason) {
   }
 }
 function finishScreen(reason, p) {
-  $("#d_ic").textContent = "✅"; $("#d_h").textContent = "Test submitted successfully!";
-  let t = `Thank you, <b>${esc(S.student.name)}</b>. Your responses and resume have been recorded.<br>Registration ID: <b>${esc(S.id)}</b>`;
-  if (/Auto-submitted/.test(reason)) t += `<br><span style="color:#b4232a">${esc(reason)}</span>`;
+  const ic = $("#d_ic"); ic.textContent = "\u2713"; ic.classList.add("ok");
+  $("#d_h").textContent = "Assessment Submitted";
+  let t = "Thank you! Your responses have been recorded successfully. The Korlance team will contact you with the results. You may now close this window.";
+  if (/Auto-submitted|Time over/.test(reason)) t += `<br><span style="color:#b4232a">${esc(reason)}</span>`;
   if (C.SHOW_SCORE_TO_STUDENT) t += `<br>Score: <b>${p.totalScore} / ${p.maxScore}</b>`;
-  t += `<br>The Korlance team will contact you with the results. You may close this window.`;
-  $("#d_p").innerHTML = t; $("#d_actions").innerHTML = ""; show("done");
+  $("#d_p").innerHTML = t;
+  const st = S.student, row = (k, v) => `<tr><td>${k}</td><td><b>${esc(String(v))}</b></td></tr>`;
+  $("#d_tbl").innerHTML = row("Name", st.name) + row("Domain", DNAME[S.key].split(" (")[0]) + row("Register No", st.scroll) + row("Email", st.email) + row("Reg ID", S.id) + row("Submitted at", new Date().toLocaleString("en-IN"));
+  $("#d_actions").innerHTML = ""; show("done");
 }
 })();

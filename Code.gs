@@ -48,17 +48,21 @@ function register_(d) {
       return { ok: false, error: 'This email has already attempted the ' + d.domainName + ' test.' };
   }
   const id = 'KTC-' + Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyMMdd') + '-' + String(sh.getLastRow()).padStart(4, '0');
-  const ext = (d.resume.name.split('.').pop() || 'pdf').toLowerCase();
-  const safe = s => String(s).replace(/[^A-Za-z0-9]+/g, '_').slice(0, 30);
-  const blob = Utilities.newBlob(Utilities.base64Decode(d.resume.data), d.resume.mime, safe(d.scroll) + '_' + safe(d.name) + '_' + safe(d.domain) + '.' + ext);
-  const file = folder_().createFile(blob);
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  let file = null;
+  if (d.resume && d.resume.data) {
+    const ext = (d.resume.name.split('.').pop() || 'pdf').toLowerCase();
+    const safe = s => String(s).replace(/[^A-Za-z0-9]+/g, '_').slice(0, 30);
+    const blob = Utilities.newBlob(Utilities.base64Decode(d.resume.data), d.resume.mime, safe(d.scroll) + '_' + safe(d.name) + '_' + safe(d.domain) + '.' + ext);
+    file = folder_().createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  }
   const row = sh.getLastRow() + 1;
   sh.getRange(row, 1, 1, HEADERS.length).setValues([[id, new Date(), d.name, d.college, d.dept, String(d.scroll), d.domainName, email, String(d.phone), '', 'Started',
     '', '', '', '', '', '', '', '', '', '', '', '', '']]);
   sh.getRange(row, 6).setNumberFormat('@').setValue(String(d.scroll));
   sh.getRange(row, 9).setNumberFormat('@').setValue(String(d.phone));
-  sh.getRange(row, 10).setFormula('=HYPERLINK("' + file.getUrl() + '","Open Resume")');
+  if (file) sh.getRange(row, 10).setFormula('=HYPERLINK("' + file.getUrl() + '","Open Resume")');
+  else sh.getRange(row, 10).setValue('Not uploaded');
   sh.getRange(row, 2).setNumberFormat('dd-mmm-yyyy hh:mm');
   return { ok: true, id: id };
 }

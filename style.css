@@ -115,3 +115,16 @@ label.f{display:block;font-size:12px;font-weight:600;color:#463a73;margin:10px 0
 .hero .note{color:#bcaaf0;font-size:12.5px;margin:6px 0 0;line-height:1.6}
 .btn.go{background:linear-gradient(135deg,#17b97c,#0b8a5a);box-shadow:0 8px 20px #0b8a5a44;font-size:13px;padding:12px}
 @media(max-width:860px){.landing{grid-template-columns:1fr}.total strong{font-size:40px}}
+
+/* ---------- darker test screen ---------- */
+#screen-test{background:#1c1840}
+.tab{background:#2b2560;border-color:#3b3478;color:#b9aee8}.tab.on{background:#ece8f8;color:var(--p2)}
+.body{background:#ece8f8;border-color:#3b3478}
+/* ---------- final page ---------- */
+.done{max-width:560px}
+.dlogo{width:190px;max-width:70%;display:block;margin:0 auto 6px}
+.done .ic{font-size:64px}
+#d_ic.ok{width:84px;height:84px;margin:10px auto 14px;border-radius:50%;background:linear-gradient(135deg,#1aa557,#23b862);color:#fff;font-size:46px;display:grid;place-items:center;box-shadow:0 10px 30px #1aa55755}
+#d_h{font-size:26px;margin:4px 0 10px}
+.dtbl{border-collapse:collapse;margin:18px auto 4px;width:100%;max-width:440px;text-align:left;font-size:14px}
+.dtbl td{padding:10px 12px;border-bottom:1px solid var(--line);color:var(--mut)}.dtbl td b{color:var(--ink);word-break:break-all}
