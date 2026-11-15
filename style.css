@@ -151,3 +151,24 @@ label.f{display:block;font-size:12px;font-weight:600;color:#463a73;margin:10px 0
 #screen-test .rrow{color:#1a0b3d}
 #screen-test .sum{background:#2c2362;color:#e3d8ff}
 #screen-test .tbl td,#screen-test .tbl th{border-color:#34296b}#screen-test .tbl th{background:#2c2362}
+
+/* ---------- white theme with K watermark ---------- */
+.bg{background:radial-gradient(900px 520px at 100% 0,#f3ecff,transparent 60%),#fff}
+.bg i{display:none}
+.bg:after{background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><g fill='%235b0fd1' fill-opacity='.075'><polygon points='6,8 36,0 36,120 6,112'/><polygon points='44,64 84,0 118,0 74,70'/><polygon points='52,60 118,120 80,120 44,86'/></g></svg>");background-repeat:no-repeat;background-position:2% 62%;background-size:min(520px,75vw);mask-image:none;-webkit-mask-image:none}
+.card,.panel{border:1px solid var(--line);box-shadow:0 24px 60px #5b0fd117}
+.hero{color:var(--ink)}
+.brandrow{border-bottom:1px solid var(--line)}
+.brandrow .logo{border:1px solid var(--line);padding:3px}
+.brandrow b{color:var(--p3)}.brandrow small{color:var(--p2);font-weight:500}
+.eyebrow{display:inline-block;margin:26px 0 12px;font-size:11.5px;font-weight:700;letter-spacing:.14em;color:var(--p2);background:#f1e9ff;padding:6px 12px;border-radius:999px}
+.hero h1{margin:0 0 12px;color:var(--p3);font-size:clamp(28px,3.3vw,40px)}
+.hero p.lead{color:var(--mut)}
+.stats{display:flex;gap:12px;margin:24px 0 18px}
+.stats div{flex:1;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:0 6px 18px #5b0fd10f}
+.stats b{display:block;font-size:30px;line-height:1.1;color:var(--p2)}.stats span{font-size:12px;color:var(--mut)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 24px}
+.chips span{font-size:12px;font-weight:500;padding:6px 12px;border-radius:999px;background:#fff;border:1px solid var(--line);color:#463a73}
+.flow li:before{background:var(--p2);color:#fff}.flow li:after{background:var(--line)}
+.flow b{color:var(--ink)}.flow span{color:var(--mut)}
+.hero .note{color:var(--mut)}

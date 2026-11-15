@@ -23,6 +23,8 @@ const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const show = id => { ["reg","resume","instr","test","done"].forEach(n => $("#screen-" + n).classList.toggle("hidden", n !== id)); window.scrollTo(0, 0); };
 const SKEY = "korlance_session_v1";
+{ const hc = $("#h_chips"), nm = DOMAINS.map(d => d[1].split(" (")[0]);
+  if (hc) hc.innerHTML = nm.slice(0, 9).map(n => `<span>${n}</span>`).join("") + (nm.length > 9 ? `<span>+${nm.length - 9} more</span>` : ""); }
 function goFs() { if (C.REQUIRE_FULLSCREEN && !document.fullscreenElement) { try { const p = document.documentElement.requestFullscreen(); if (p && p.catch) p.catch(() => {}); } catch (e) {} } }
 
 let S = { student:null, id:null, key:"", paper:[], ans:[], cur:0, section:"mcq", coding:[], cp:0, warns:0, log:[], startAt:0, endAt:0,
@@ -362,7 +364,7 @@ function showFinal(at, again, reason, p, started) {
   const ic = $("#d_ic"); ic.textContent = "\u2713"; ic.classList.add("ok");
   $("#d_h").textContent = started ? "Attempt Already Recorded" : "Assessment Submitted";
   let t = started ? "This email or mobile number has already been used to attempt this assessment. Only one attempt is allowed. The Korlance team will contact you if needed. You may now close this window." : again ? "You have already completed this assessment. Your responses have been recorded. The Korlance team will contact you with the results. You may now close this window."
-    : "Thank you! Your responses have been recorded successfully. The Korlance team will contact you with the results. You may now close this window.";
+    : "Thank you! Your responses have been recorded successfully. A confirmation email is being sent to your registered email address (please check your Spam folder too). The Korlance team will contact you with the results. You may now close this window.";
   if (!again && /Auto-submitted|Time over/.test(reason || "")) t += `<br><span style="color:#b4232a">${esc(reason)}</span>`;
   if (!again && p && C.SHOW_SCORE_TO_STUDENT) t += `<br>Score: <b>${p.totalScore} / ${p.maxScore}</b>`;
   $("#d_p").innerHTML = t;

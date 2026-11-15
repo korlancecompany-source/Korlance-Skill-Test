@@ -92,5 +92,34 @@ function submit_(d) {
     const cs = sheet_('Code', ['Reg ID', 'Name', 'Problem', 'Language', 'Passed', 'Total', 'Marks', 'Submitted code']);
     d.coding.forEach(c => cs.appendRow([d.id, sh.getRange(row, 3).getValue(), c.title, c.lang, c.passed, c.total, c.marks, String(c.code).slice(0, 45000)]));
   }
+  sendDone_(sh.getRange(row, 3).getValue(), sh.getRange(row, 8).getValue(), sh.getRange(row, 7).getValue(), d.id);
   return { ok: true };
 }
+
+/* ---------- "Test completed" email to the student ---------- */
+function sendDone_(name, email, domain, id) {
+  try {
+    if (!email) return;
+    const when = Utilities.formatDate(new Date(), 'Asia/Kolkata', 'dd MMM yyyy, hh:mm a');
+    const subject = 'Korlance Test Camp: Test Completed (' + id + ')';
+    const text = 'Hi ' + name + ',\n\nYou have successfully completed the Korlance Test Camp assessment.\n\n' +
+      'Domain: ' + domain + '\nRegistration ID: ' + id + '\nSubmitted at: ' + when + ' (IST)\n\n' +
+      'Your responses have been recorded. The result will be announced by the Korlance Team. Please wait for their communication.\n\n' +
+      'All the best!\nKorlance Team\nBuild Today. Lead Tomorrow.\n\n(This is an automated confirmation. If it reached your Spam folder, please mark it as Not spam.)';
+    const html = '<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;border:1px solid #e5defa;border-radius:12px;overflow:hidden">' +
+      '<div style="background:#2a0a6b;color:#fff;padding:18px 22px;font-size:18px;font-weight:bold">Korlance Test Camp</div>' +
+      '<div style="padding:22px;color:#1a0b3d;line-height:1.6">' +
+      '<p>Hi <b>' + name + '</b>,</p>' +
+      '<p>You have <b>successfully completed</b> the Korlance Test Camp assessment.</p>' +
+      '<table style="border-collapse:collapse;font-size:14px;margin:12px 0">' +
+      '<tr><td style="padding:6px 14px 6px 0;color:#6b5f8f">Domain</td><td><b>' + domain + '</b></td></tr>' +
+      '<tr><td style="padding:6px 14px 6px 0;color:#6b5f8f">Registration ID</td><td><b>' + id + '</b></td></tr>' +
+      '<tr><td style="padding:6px 14px 6px 0;color:#6b5f8f">Submitted at</td><td><b>' + when + ' (IST)</b></td></tr></table>' +
+      '<p>Your responses have been recorded. The <b>result will be announced by the Korlance Team</b>. Please wait for their communication.</p>' +
+      '<p>All the best!<br>Korlance Team<br><i>Build Today. Lead Tomorrow.</i></p><p style="font-size:12px;color:#6b5f8f">This is an automated confirmation. If it reached your Spam folder, please mark it as Not spam.</p></div></div>';
+    MailApp.sendEmail({ to: String(email), subject: subject, body: text, htmlBody: html, name: 'Korlance Test Camp' });
+  } catch (err) { /* never block the submission if the email fails */ }
+}
+
+/* Run this ONCE from the editor to give the script permission to send email */
+function authorizeMail() { Logger.log('Mails left today: ' + MailApp.getRemainingDailyQuota()); }
