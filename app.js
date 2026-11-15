@@ -23,6 +23,9 @@ const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const show = id => { ["reg","resume","instr","test","done"].forEach(n => $("#screen-" + n).classList.toggle("hidden", n !== id)); window.scrollTo(0, 0); };
 const SKEY = "korlance_session_v1";
+const hideCode = () => { const fc = $("#f_code"); if (fc) { fc.classList.add("hidden"); if (fc.previousElementSibling) fc.previousElementSibling.classList.add("hidden"); } };
+const showCode = () => { const fc = $("#f_code"); if (fc) { fc.classList.remove("hidden"); if (fc.previousElementSibling) fc.previousElementSibling.classList.remove("hidden"); } };
+{ const cp = new URLSearchParams(location.search).get("code"); if (cp && $("#f_code")) { $("#f_code").value = cp.trim(); hideCode(); } }
 if (!C.REQUIRE_ACCESS_CODE) { const fc = $("#f_code"); if (fc) { fc.classList.add("hidden"); if (fc.previousElementSibling) fc.previousElementSibling.classList.add("hidden"); } }
 { const hc = $("#h_chips"), nm = DOMAINS.map(d => d[1].split(" (")[0]);
   if (hc) hc.innerHTML = nm.slice(0, 9).map(n => `<span>${n}</span>`).join("") + (nm.length > 9 ? `<span>+${nm.length - 9} more</span>` : ""); }
@@ -60,7 +63,7 @@ const fileToB64 = f => new Promise((res, rej) => { const r = new FileReader(); r
 $("#regForm").addEventListener("submit", async e => {
   e.preventDefault();
   const v = id => $("#" + id).value.trim(), err = $("#regErr"), btn = $("#regBtn");
-  const fail = m => { err.textContent = m; err.classList.remove("hidden"); };
+  const fail = m => { err.textContent = m; err.classList.remove("hidden"); if (/access code/i.test(m)) showCode(); };
   err.classList.add("hidden");
   const d = { name:v("f_name"), college:v("f_college"), dept:v("f_dept"), scroll:v("f_scroll"), domain:v("f_domain"), email:v("f_email").toLowerCase(), phone:v("f_phone"), accessCode:v("f_code") };
   if (!d.name || !d.college || !d.dept || !d.scroll || !d.domain) return fail("Please fill all the fields.");
