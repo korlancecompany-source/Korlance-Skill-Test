@@ -14,6 +14,8 @@ window.CONFIG = {
   ALLOW_PASTE_IN_EDITOR: false,
   MAX_RESUME_MB: 3,
   SHOW_SCORE_TO_STUDENT: false,
+  REQUIRE_ACCESS_CODE: true,   // students must type the access code (the code itself is set in Code.gs)
+  CERTIFICATE: false,          // participation certificate (PDF) after the test
 
   BRAND: "Korlance Test Camp"
 };

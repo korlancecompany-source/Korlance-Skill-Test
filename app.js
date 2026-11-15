@@ -23,6 +23,7 @@ const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const show = id => { ["reg","resume","instr","test","done"].forEach(n => $("#screen-" + n).classList.toggle("hidden", n !== id)); window.scrollTo(0, 0); };
 const SKEY = "korlance_session_v1";
+if (!C.REQUIRE_ACCESS_CODE) { const fc = $("#f_code"); if (fc) { fc.classList.add("hidden"); if (fc.previousElementSibling) fc.previousElementSibling.classList.add("hidden"); } }
 { const hc = $("#h_chips"), nm = DOMAINS.map(d => d[1].split(" (")[0]);
   if (hc) hc.innerHTML = nm.slice(0, 9).map(n => `<span>${n}</span>`).join("") + (nm.length > 9 ? `<span>+${nm.length - 9} more</span>` : ""); }
 function goFs() { if (C.REQUIRE_FULLSCREEN && !document.fullscreenElement) { try { const p = document.documentElement.requestFullscreen(); if (p && p.catch) p.catch(() => {}); } catch (e) {} } }
@@ -41,12 +42,16 @@ try { const old = JSON.parse(localStorage.getItem(SKEY) || "null");
 /* already submitted on this device -> show the final page again */
 const DONE_KEY = "korlance_done";
 try { const dn = JSON.parse(localStorage.getItem(DONE_KEY) || "null");
-  if (dn && dn.id) { S.student = { name:dn.name, scroll:dn.scroll, email:dn.email }; S.key = dn.key; S.id = dn.id; S.submitted = true; S.active = false; showFinal(dn.at, true); } } catch (e) {}
+  if (dn && dn.id) { S.student = { name:dn.name, scroll:dn.scroll, email:dn.email, college:dn.college }; S.key = dn.key; S.id = dn.id; S.submitted = true; S.active = false; showFinal(dn.at, true, "", null, false, true); } } catch (e) {}
+
+try { const bk = JSON.parse(localStorage.getItem("korlance_backup") || "null"), dd = JSON.parse(localStorage.getItem(DONE_KEY) || "null");
+  if (bk && bk.payload && bk.payload.id && !dd) { S.student = bk.student; S.id = bk.payload.id; S.key = bk.payload.domain; S.payload = bk.payload; S.submitted = true; S.active = false; setTimeout(pushBackup, 0); } } catch (e) {}
 
 /* ---------------- backend ---------------- */
+const tfetch = (u, o, ms) => { const c = new AbortController(), t = setTimeout(() => c.abort(), ms || 20000); return fetch(u, Object.assign({}, o, { signal:c.signal })).finally(() => clearTimeout(t)); };
 async function api(payload) {
   if (!C.APPS_SCRIPT_URL) return { ok:true, id:"DEMO-" + Date.now().toString(36).toUpperCase(), demo:true };
-  const r = await fetch(C.APPS_SCRIPT_URL, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify(payload) });
+  const r = await tfetch(C.APPS_SCRIPT_URL, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify(payload) }, 70000);
   return r.json();
 }
 const fileToB64 = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(f); });
@@ -57,12 +62,13 @@ $("#regForm").addEventListener("submit", async e => {
   const v = id => $("#" + id).value.trim(), err = $("#regErr"), btn = $("#regBtn");
   const fail = m => { err.textContent = m; err.classList.remove("hidden"); };
   err.classList.add("hidden");
-  const d = { name:v("f_name"), college:v("f_college"), dept:v("f_dept"), scroll:v("f_scroll"), domain:v("f_domain"), email:v("f_email").toLowerCase(), phone:v("f_phone") };
+  const d = { name:v("f_name"), college:v("f_college"), dept:v("f_dept"), scroll:v("f_scroll"), domain:v("f_domain"), email:v("f_email").toLowerCase(), phone:v("f_phone"), accessCode:v("f_code") };
   if (!d.name || !d.college || !d.dept || !d.scroll || !d.domain) return fail("Please fill all the fields.");
+  if (C.REQUIRE_ACCESS_CODE && !d.accessCode) return fail("Enter the access code given by the Korlance team.");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.email)) return fail("Enter a valid email address.");
   if (!/^[6-9]\d{9}$/.test(d.phone)) return fail("Enter a valid 10-digit mobile number.");
   const f = $("#f_resume").files[0];
-  /* resume is optional */
+  if (!f) return fail("Please upload your resume (PDF or Word).");
   if (f && !/\.(pdf|doc|docx)$/i.test(f.name)) return fail("Resume must be a PDF, DOC or DOCX file.");
   if (f && f.size > C.MAX_RESUME_MB * 1048576) return fail(`Resume must be under ${C.MAX_RESUME_MB} MB.`);
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Saving...';
@@ -91,7 +97,7 @@ $("#startBtn").addEventListener("click", async () => {
   goFs();
   const k = S.key, pool = QB[k] || [];
   S.paper = shuffle(pool).slice(0, 30).map(q => { const opts = shuffle(q.slice(1)); return { q:q[0], opts, ans:opts.indexOf(q[1]) }; });
-  S.ans = S.paper.map(() => -1);
+  S.ans = S.paper.map(() => -1); S.rev = S.paper.map(() => false);
   S.coding = (CODING[k] || []).map(p => ({ p, lang:p.langs[0], code:{}, res:null, passed:0, total:p.tests.length, dirty:false }));
   S.prac = S.coding.length ? [] : (PRAC[k] || []).map(p => ({ t:p.title, q:p.q, a:"" }));
   const mins = C.TOTAL_MINUTES;
@@ -99,7 +105,7 @@ $("#startBtn").addEventListener("click", async () => {
   beginTest();
 });
 $("#resumeBtn").addEventListener("click", async () => {
-  const o = S._old; Object.assign(S, o); S.student = o.student;
+  const o = S._old; Object.assign(S, o); S.student = o.student; S.rev = S.rev || S.paper.map(() => false);
   S.coding.forEach(c => { c.p = (CODING[S.key] || []).find(p => p.id === c.pid); });
   S.coding = S.coding.filter(c => c.p); S.prac = S.prac || [];
   goFs();
@@ -125,11 +131,13 @@ function switchSection(s) {
 function tick() {
   const left = Math.max(0, S.endAt - Date.now()), m = Math.floor(left / 60000), s = Math.floor(left % 60000 / 1000);
   const el = $("#t_time"); el.textContent = `⏱ ${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`; el.classList.toggle("low", left < 300000);
+  if (left > 0 && left <= 300000 && !S._w5) { S._w5 = 1; toast("5 minutes left. Finish your answers and submit before the time ends."); }
+  if (left > 0 && left <= 60000 && !S._w1) { S._w1 = 1; toast("Only 1 minute left!"); }
   if (left <= 0 && !S.submitted && !S.busy) submitTest("Time over (auto-submitted)");
 }
 function save() {
   if (S.submitted) return;
-  try { localStorage.setItem(SKEY, JSON.stringify({ student:S.student, id:S.id, key:S.key, paper:S.paper, ans:S.ans, cur:S.cur, warns:S.warns, log:S.log, prac:S.prac, startAt:S.startAt, endAt:S.endAt,
+  try { localStorage.setItem(SKEY, JSON.stringify({ student:S.student, id:S.id, key:S.key, paper:S.paper, ans:S.ans, rev:S.rev, cur:S.cur, warns:S.warns, log:S.log, prac:S.prac, startAt:S.startAt, endAt:S.endAt,
     coding:S.coding.map(c => ({ pid:c.p.id, lang:c.lang, code:c.code, res:c.res, passed:c.passed, total:c.total, dirty:c.dirty })), submitted:false })); } catch (e) {}
 }
 
@@ -139,7 +147,8 @@ function renderQ() {
   $("#q_no").textContent = `QUESTION ${S.cur + 1} OF ${S.paper.length}`;
   $("#q_text").textContent = q.q;
   $("#q_opts").innerHTML = q.opts.map((o, i) => `<div class="opt ${S.ans[S.cur] === i ? "sel" : ""}" data-i="${i}"><div class="l">${"ABCD"[i]}</div><span class="t">${esc(o)}</span></div>`).join("");
-  $("#pgrid").innerHTML = S.paper.map((_, i) => `<button data-i="${i}" class="${S.ans[i] >= 0 ? "ans" : ""} ${i === S.cur ? "cur" : ""}">${i + 1}</button>`).join("");
+  $("#q_rev").textContent = S.rev[S.cur] ? "\u2691 Unmark Review" : "\u2691 Mark for Review";
+  $("#pgrid").innerHTML = S.paper.map((_, i) => `<button data-i="${i}" class="${S.ans[i] >= 0 ? "ans" : ""} ${i === S.cur ? "cur" : ""} ${S.rev[i] ? "rev" : ""}">${i + 1}</button>`).join("");
   const n = S.ans.filter(a => a >= 0).length; $("#q_count").textContent = `${n} of ${S.paper.length} answered`;
   $("#q_prev").disabled = S.cur === 0;
   const last = S.cur === S.paper.length - 1;
@@ -158,6 +167,7 @@ function renderPrac() {
   document.querySelectorAll("#v_prac textarea").forEach(t => t.oninput = () => { const i = +t.dataset.i; S.prac[i].a = t.value; $("#pc" + i).textContent = t.value.length + " characters"; clearTimeout(S._pt); S._pt = setTimeout(save, 600); });
 }
 $("#q_clear").onclick = () => { S.ans[S.cur] = -1; renderQ(); save(); };
+$("#q_rev").onclick = () => { S.rev[S.cur] = !S.rev[S.cur]; renderQ(); save(); };
 
 /* ---------------- Coding UI ---------------- */
 function curProb() { return S.coding[S.cp]; }
@@ -197,13 +207,13 @@ $("#resetBtn").onclick = () => { const c = curProb(); c.code[c.lang] = STARTER[c
 const J0H = () => Object.assign({ "Content-Type":"application/json" }, C.JUDGE0_HEADERS || {});
 async function runBatch(code, lang, inputs) {
   const subs = inputs.map(i => ({ source_code:code, language_id:LANG[lang].id, stdin:i, cpu_time_limit:3, wall_time_limit:8, memory_limit:256000 }));
-  let r = await fetch(`${C.JUDGE0_URL}/submissions/batch?base64_encoded=false`, { method:"POST", headers:J0H(), body:JSON.stringify({ submissions:subs }) });
+  let r = await tfetch(`${C.JUDGE0_URL}/submissions/batch?base64_encoded=false`, { method:"POST", headers:J0H(), body:JSON.stringify({ submissions:subs }) }, 20000);
   if (!r.ok) throw new Error("Compiler server error (" + r.status + "). Try again in a few seconds.");
   const tokens = (await r.json()).map(x => x.token);
   const url = `${C.JUDGE0_URL}/submissions/batch?base64_encoded=false&fields=token,stdout,stderr,compile_output,message,status,time&tokens=${tokens.join(",")}`;
   for (let k = 0; k < 45; k++) {
     await new Promise(res => setTimeout(res, k < 3 ? 900 : 1500));
-    r = await fetch(url, { headers:J0H() }); if (!r.ok) continue;
+    try { r = await tfetch(url, { headers:J0H() }, 15000); } catch (e) { continue; } if (!r.ok) continue;
     const d = (await r.json()).submissions; if (d && d.every(x => x.status && x.status.id > 2)) return tokens.map(t => d.find(x => x.token === t));
   }
   throw new Error("Compiler timed out. Please try again.");
@@ -337,22 +347,40 @@ $("#submitBtn").onclick = () => {
   modal("📝", "Submit your test?", `You have <b>${un}</b> unanswered MCQ${un === 1 ? "" : "s"}.${codeInfo}${pracInfo}<br>You cannot change answers after submitting.`,
     [["Go back", "ghost", closeModal], ["Yes, Submit", "ok", () => { closeModal(); submitTest("Submitted by student"); }]]);
 };
+function snapshot(reason) {
+  const mcq = S.paper.reduce((n, q, i) => n + (S.ans[i] === q.ans ? 1 : 0), 0);
+  const cod = S.coding.map(c => { const total = c.total || c.p.tests.length, passed = c.passed || 0; return { id:c.p.id, title:c.p.title, lang:c.lang, passed, total, marks:+(10 * passed / total).toFixed(1), code:c.code[c.lang] || "" }; });
+  const codeMarks = cod.reduce((n, c) => n + c.marks, 0);
+  return { id:S.id, email:S.student.email, domain:S.key, mcqScore:mcq, mcqTotal:S.paper.length, coding:cod, codingMarks:+codeMarks.toFixed(1), codingMax:cod.length * 10,
+    totalScore:+(mcq + codeMarks).toFixed(1), maxScore:S.paper.length + cod.length * 10, practical:S.prac.map(p => ({ title:p.t, question:p.q, answer:p.a })), warnings:S.warns, warnLog:S.log.join(" | "), reason,
+    minutes:+((Date.now() - S.startAt) / 60000).toFixed(1),
+    answers:S.paper.map((q, i) => `${i + 1}:${S.ans[i] < 0 ? "-" : "ABCD"[S.ans[i]]}${S.ans[i] === q.ans ? "+" : ""}`).join(" ") };
+}
+/* autosave to the server every minute (and when the tab is closed), so nothing is lost */
+let progSig = "";
+setInterval(async () => {
+  if (!S.active || S.submitted || S.busy || !C.APPS_SCRIPT_URL || !S.id) return;
+  const snap = snapshot("In progress"); snap.action = "progress"; const sig = JSON.stringify(Object.assign({}, snap, { minutes:0 }));
+  if (sig === progSig) return; try { const r = await api(snap); if (r.ok) progSig = sig; } catch (e) {}
+}, 60000);
+window.addEventListener("pagehide", () => { try { if (S.active && !S.submitted && !S.busy && C.APPS_SCRIPT_URL && S.id) { const snap = snapshot("In progress"); snap.action = "progress"; navigator.sendBeacon(C.APPS_SCRIPT_URL, JSON.stringify(snap)); } } catch (e) {} });
+async function pushBackup() {
+  $("#d_ic").textContent = "\u23F3"; $("#d_h").textContent = "Saving your answers..."; $("#d_p").textContent = "Your earlier submission did not reach the server. Sending it now. Please keep this tab open."; $("#d_tbl").innerHTML = ""; $("#d_actions").innerHTML = ""; $("#d_fb").innerHTML = ""; show("done");
+  for (let k = 0; k < 8; k++) { try { const r = await api(S.payload); if (r.ok) { try { localStorage.removeItem("korlance_backup"); } catch (e) {} finishScreen("Submitted", S.payload); return; } } catch (e) {} await new Promise(r => setTimeout(r, 3000 * (k + 1))); }
+  $("#d_ic").textContent = "\u26A0\uFE0F"; $("#d_h").textContent = "Could not save yet"; $("#d_p").textContent = "Please connect to the internet and press Retry. Do not close this tab.";
+  $("#d_actions").innerHTML = '<button class="btn" id="retry2">Retry</button>'; $("#retry2").onclick = pushBackup;
+}
 async function submitTest(reason) {
   if (S.submitted || S.busy) return; S.busy = true; closeModal();
   modal("⏳", "Submitting your test...", "Evaluating your code and saving your answers. Please do not close this window.", []);
   S.active = false; clearInterval(S.timer);
   const t = $("#modal"); void t;
-  for (const c of S.coding) { if (c.dirty || (!c.res && (c.code[c.lang] || "").trim() && c.code[c.lang] !== STARTER[c.lang])) { try { await evaluate(c); } catch (e) {} } }
-  const mcq = S.paper.reduce((n, q, i) => n + (S.ans[i] === q.ans ? 1 : 0), 0);
-  const cod = S.coding.map(c => ({ id:c.p.id, title:c.p.title, lang:c.lang, passed:c.passed, total:c.total, marks:+(10 * c.passed / c.total).toFixed(1), code:c.code[c.lang] || "" }));
-  const codeMarks = cod.reduce((n, c) => n + c.marks, 0);
-  const payload = { action:"submit", id:S.id, email:S.student.email, domain:S.key, mcqScore:mcq, mcqTotal:S.paper.length, coding:cod, codingMarks:+codeMarks.toFixed(1), codingMax:cod.length * 10,
-    totalScore:+(mcq + codeMarks).toFixed(1), maxScore:S.paper.length + cod.length * 10, practical:S.prac.map(p => ({ title:p.t, question:p.q, answer:p.a })), warnings:S.warns, warnLog:S.log.join(" | "), reason,
-    minutes:+((Date.now() - S.startAt) / 60000).toFixed(1),
-    answers:S.paper.map((q, i) => `${i + 1}:${S.ans[i] < 0 ? "-" : "ABCD"[S.ans[i]]}${S.ans[i] === q.ans ? "+" : ""}`).join(" ") };
+  for (const c of S.coding) { if (c.dirty || (!c.res && (c.code[c.lang] || "").trim() && c.code[c.lang] !== STARTER[c.lang])) { try { await Promise.race([evaluate(c), new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 45000))]); } catch (e) {} } }
+  const payload = snapshot(reason); payload.action = "submit";
+  if (C.CERTIFICATE !== false && window.makeCertificate) { try { payload.cert = (await window.makeCertificate({ name:S.student.name, domain:(DNAME[S.key] || S.key).split(" (")[0], id:S.id, scroll:S.student.scroll, college:S.student.college || "", date:new Date() })).b64; } catch (e) {} }
   S.payload = payload; try { localStorage.setItem("korlance_backup", JSON.stringify({ student:S.student, payload })); } catch (e) {}
   let ok = false, lastErr = "";
-  for (let a = 0; a < 4 && !ok; a++) { try { const r = await api(payload); if (r.ok) ok = true; else lastErr = r.error; } catch (e) { lastErr = e.message; await new Promise(r => setTimeout(r, 1500 * (a + 1))); } }
+  for (let a = 0; a < 6 && !ok; a++) { try { const r = await api(payload); if (r.ok) ok = true; else lastErr = r.error; } catch (e) { lastErr = e.message; } if (!ok) await new Promise(r => setTimeout(r, 2000 * (a + 1))); }
   S.busy = false; closeModal(); detachGuards(); if (document.fullscreenElement) { try { document.exitFullscreen(); } catch (e) {} }
   if (ok) { S.submitted = true; try { localStorage.removeItem(SKEY); localStorage.removeItem("korlance_backup"); } catch (e) {} finishScreen(reason, payload); }
   else {
@@ -366,10 +394,28 @@ async function submitTest(reason) {
 }
 function finishScreen(reason, p) {
   const at = new Date().toISOString();
-  try { localStorage.setItem(DONE_KEY, JSON.stringify({ id:S.id, key:S.key, name:S.student.name, scroll:S.student.scroll, email:S.student.email, at })); localStorage.removeItem(SKEY); } catch (e) {}
-  showFinal(at, false, reason, p);
+  try { localStorage.setItem(DONE_KEY, JSON.stringify({ id:S.id, key:S.key, name:S.student.name, scroll:S.student.scroll, email:S.student.email, college:S.student.college, at })); localStorage.removeItem(SKEY); } catch (e) {}
+  showFinal(at, false, reason, p, false, true);
 }
-function showFinal(at, again, reason, p, started) {
+function toast(m) { let t = $("#toast"); if (!t) { t = document.createElement("div"); t.id = "toast"; document.body.appendChild(t); } t.textContent = m; t.classList.add("show"); clearTimeout(S._tt); S._tt = setTimeout(() => t.classList.remove("show"), 7000); }
+function renderFeedback() {
+  const box = $("#d_fb"), fk = "korlance_fb_" + S.id; let given = false; try { given = !!localStorage.getItem(fk); } catch (e) {}
+  if (given) { box.innerHTML = '<p class="fbthanks">Thanks for your feedback!</p>'; return; }
+  box.innerHTML = `<div class="fb"><h4>How was your test experience?</h4><div class="stars" id="fb_stars">${[1,2,3,4,5].map(n => `<button type="button" data-n="${n}">\u2605</button>`).join("")}</div>
+    <div class="diff" id="fb_diff">${["Easy","Just right","Difficult"].map(t => `<button type="button" data-v="${t}">${t}</button>`).join("")}</div>
+    <textarea id="fb_text" placeholder="Any comments or suggestions? (optional)"></textarea><button class="btn" id="fb_send" type="button">Submit feedback</button><p class="fbmsg hidden" id="fb_msg"></p></div>`;
+  let rating = 0, diff = ""; const msg = m => { const e = $("#fb_msg"); e.textContent = m; e.classList.remove("hidden"); };
+  $("#fb_stars").onclick = e => { const b = e.target.closest("button"); if (!b) return; rating = +b.dataset.n; document.querySelectorAll("#fb_stars button").forEach(x => x.classList.toggle("on", +x.dataset.n <= rating)); };
+  $("#fb_diff").onclick = e => { const b = e.target.closest("button"); if (!b) return; diff = b.dataset.v; document.querySelectorAll("#fb_diff button").forEach(x => x.classList.toggle("on", x.dataset.v === diff)); };
+  $("#fb_send").onclick = async () => {
+    if (!rating) return msg("Please select a star rating."); const btn = $("#fb_send"); btn.disabled = true;
+    try { const r = await api({ action:"feedback", id:S.id, rating, difficulty:diff, comment:$("#fb_text").value.trim() }); if (!r.ok) throw new Error(r.error || "failed");
+      try { localStorage.setItem(fk, "1"); } catch (e) {} box.innerHTML = '<p class="fbthanks">Thanks for your feedback!</p>'; }
+    catch (e) { btn.disabled = false; msg("Could not send feedback. Please try again."); }
+  };
+}
+function showFinal(at, again, reason, p, started, own) {
+  const tt = $("#toast"); if (tt) tt.classList.remove("show");
   const ic = $("#d_ic"); ic.textContent = "\u2713"; ic.classList.add("ok");
   $("#d_h").textContent = started ? "Attempt Already Recorded" : "Assessment Submitted";
   let t = started ? "This email or mobile number has already been used to attempt this assessment. Only one attempt is allowed. The Korlance team will contact you if needed. You may now close this window." : again ? "You have already completed this assessment. Your responses have been recorded. The Korlance team will contact you with the results. You may now close this window."
@@ -379,6 +425,12 @@ function showFinal(at, again, reason, p, started) {
   $("#d_p").innerHTML = t;
   const st = S.student, row = (k, v) => `<tr><td>${k}</td><td><b>${esc(String(v))}</b></td></tr>`;
   $("#d_tbl").innerHTML = row("Name", st.name) + row("Domain", (DNAME[S.key] || S.key).split(" (")[0]) + row("Register No", st.scroll) + row("Email", st.email) + row("Reg ID", S.id) + row(started ? "Attempted at" : "Submitted at", new Date(at).toLocaleString("en-IN"));
-  $("#d_actions").innerHTML = ""; show("done");
+  const ci = () => ({ name:st.name, domain:(DNAME[S.key] || S.key).split(" (")[0], id:S.id, scroll:st.scroll, college:st.college || "", date:new Date(at) });
+  const showCert = own && C.CERTIFICATE !== false && window.makeCertificate;
+  const CB = "\u2B07 Download Participation Certificate (PDF)";
+  $("#d_actions").innerHTML = showCert ? `<button class="btn" id="certBtn" type="button">${CB}</button><p class="pnote">A copy is also sent to your email.</p>` : "";
+  if (showCert) $("#certBtn").onclick = async () => { const b = $("#certBtn"); b.disabled = true; b.textContent = "Preparing..."; try { await window.downloadCertificate(ci()); } catch (e) {} b.disabled = false; b.textContent = CB; };
+  if (own) renderFeedback(); else $("#d_fb").innerHTML = "";
+  show("done");
 }
 })();
