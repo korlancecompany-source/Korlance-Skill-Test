@@ -1,6 +1,6 @@
 (function () {
 "use strict";
-const C = window.CONFIG, QB = window.QB || {}, CODING = window.CODING || {};
+const C = window.CONFIG, QB = window.QB || {}, CODING = window.CODING || {}, PRAC = window.PRACTICAL || {};
 const DOMAINS = [
  ["fs","Full Stack Web Development"],["ds","Data Science"],["cc","Cloud Computing"],["ai","Artificial Intelligence & Machine Learning (AIML)"],
  ["ux","UI-UX"],["cad","Auto CAD & CATIA"],["cs","Cyber Security"],["vl","VLSI"],["pds","Python with Data Science"],["pml","Python with Machine Learning"],
@@ -27,7 +27,7 @@ const SKEY = "korlance_session_v1";
   if (hc) hc.innerHTML = nm.slice(0, 9).map(n => `<span>${n}</span>`).join("") + (nm.length > 9 ? `<span>+${nm.length - 9} more</span>` : ""); }
 function goFs() { if (C.REQUIRE_FULLSCREEN && !document.fullscreenElement) { try { const p = document.documentElement.requestFullscreen(); if (p && p.catch) p.catch(() => {}); } catch (e) {} } }
 
-let S = { student:null, id:null, key:"", paper:[], ans:[], cur:0, section:"mcq", coding:[], cp:0, warns:0, log:[], startAt:0, endAt:0,
+let S = { student:null, id:null, key:"", paper:[], ans:[], cur:0, section:"mcq", coding:[], prac:[], cp:0, warns:0, log:[], startAt:0, endAt:0,
           timer:null, active:false, submitted:false, lastV:0, editor:null, sqlP:null, busy:false };
 
 /* ---------------- boot ---------------- */
@@ -79,7 +79,7 @@ $("#regForm").addEventListener("submit", async e => {
     $("#i_name").textContent = d.name;
     const hasCode = (CODING[d.domain] || []).length > 0, mins = C.TOTAL_MINUTES;
     $("#i_info").innerHTML = `<div><b>${esc(DNAME[d.domain].split(" (")[0])}</b>Your domain</div><div><b>30</b>MCQ questions</div>` +
-      (hasCode ? `<div><b>${CODING[d.domain].length}</b>Coding problems</div>` : `<div><b>-</b>No coding round</div>`) + `<div><b>${mins} min</b>Total time</div>`;
+      (hasCode ? `<div><b>${CODING[d.domain].length}</b>Coding problems</div>` : (PRAC[d.domain] ? `<div><b>${PRAC[d.domain].length}</b>Practical tasks</div>` : `<div><b>-</b>No coding round</div>`)) + `<div><b>${mins} min</b>Total time</div>`;
     show("instr");
   } catch (ex) { fail(ex.message.includes("Failed to fetch") ? "Network error. Check your internet and try again." : ex.message); }
   btn.disabled = false; btn.textContent = "Continue →";
@@ -93,6 +93,7 @@ $("#startBtn").addEventListener("click", async () => {
   S.paper = shuffle(pool).slice(0, 30).map(q => { const opts = shuffle(q.slice(1)); return { q:q[0], opts, ans:opts.indexOf(q[1]) }; });
   S.ans = S.paper.map(() => -1);
   S.coding = (CODING[k] || []).map(p => ({ p, lang:p.langs[0], code:{}, res:null, passed:0, total:p.tests.length, dirty:false }));
+  S.prac = S.coding.length ? [] : (PRAC[k] || []).map(p => ({ t:p.title, q:p.q, a:"" }));
   const mins = C.TOTAL_MINUTES;
   S.startAt = Date.now(); S.endAt = S.startAt + mins * 60000; S.warns = 0; S.log = [];
   beginTest();
@@ -100,7 +101,7 @@ $("#startBtn").addEventListener("click", async () => {
 $("#resumeBtn").addEventListener("click", async () => {
   const o = S._old; Object.assign(S, o); S.student = o.student;
   S.coding.forEach(c => { c.p = (CODING[S.key] || []).find(p => p.id === c.pid); });
-  S.coding = S.coding.filter(c => c.p);
+  S.coding = S.coding.filter(c => c.p); S.prac = S.prac || [];
   goFs();
   $("#i_name").textContent = S.student.name; beginTest(true);
 });
@@ -108,7 +109,7 @@ function beginTest(resumed) {
   S.active = true; S.submitted = false; S.section = "mcq";
   document.body.classList.add("testing");
   $("#t_domain").textContent = DNAME[S.key] + " | " + S.student.name;
-  const tabs = $("#tabs"); tabs.innerHTML = `<div class="tab on" data-s="mcq">MCQ (30)</div>` + (S.coding.length ? `<div class="tab" data-s="code">Coding (${S.coding.length})</div>` : "");
+  const tabs = $("#tabs"); tabs.innerHTML = `<div class="tab on" data-s="mcq">MCQ (30)</div>` + (S.coding.length ? `<div class="tab" data-s="code">Coding (${S.coding.length})</div>` : "") + (S.prac.length ? `<div class="tab" data-s="prac">Practical (${S.prac.length})</div>` : "");
   tabs.onclick = e => { const t = e.target.closest(".tab"); if (t) switchSection(t.dataset.s); };
   show("test"); renderQ(); updWarn(); tick(); clearInterval(S.timer); S.timer = setInterval(tick, 1000);
   attachGuards();
@@ -117,8 +118,9 @@ function beginTest(resumed) {
 }
 function switchSection(s) {
   S.section = s; document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.dataset.s === s));
-  $("#v_mcq").classList.toggle("hidden", s !== "mcq"); $("#v_code").classList.toggle("hidden", s !== "code");
+  $("#v_mcq").classList.toggle("hidden", s !== "mcq"); $("#v_code").classList.toggle("hidden", s !== "code"); $("#v_prac").classList.toggle("hidden", s !== "prac");
   if (s === "code") renderCode();
+  if (s === "prac") renderPrac();
 }
 function tick() {
   const left = Math.max(0, S.endAt - Date.now()), m = Math.floor(left / 60000), s = Math.floor(left % 60000 / 1000);
@@ -127,7 +129,7 @@ function tick() {
 }
 function save() {
   if (S.submitted) return;
-  try { localStorage.setItem(SKEY, JSON.stringify({ student:S.student, id:S.id, key:S.key, paper:S.paper, ans:S.ans, cur:S.cur, warns:S.warns, log:S.log, startAt:S.startAt, endAt:S.endAt,
+  try { localStorage.setItem(SKEY, JSON.stringify({ student:S.student, id:S.id, key:S.key, paper:S.paper, ans:S.ans, cur:S.cur, warns:S.warns, log:S.log, prac:S.prac, startAt:S.startAt, endAt:S.endAt,
     coding:S.coding.map(c => ({ pid:c.p.id, lang:c.lang, code:c.code, res:c.res, passed:c.passed, total:c.total, dirty:c.dirty })), submitted:false })); } catch (e) {}
 }
 
@@ -141,14 +143,20 @@ function renderQ() {
   const n = S.ans.filter(a => a >= 0).length; $("#q_count").textContent = `${n} of ${S.paper.length} answered`;
   $("#q_prev").disabled = S.cur === 0;
   const last = S.cur === S.paper.length - 1;
-  $("#q_next").textContent = last ? (S.coding.length ? "Save & Go to Coding Round →" : "Save Answer ✓") : "Save & Next →";
-  $("#toCode").classList.toggle("hidden", !S.coding.length);
+  $("#q_next").textContent = last ? (S.coding.length ? "Save & Go to Coding Round →" : S.prac.length ? "Save & Go to Practical Round →" : "Save Answer ✓") : "Save & Next →";
+  $("#toCode").classList.toggle("hidden", !(S.coding.length || S.prac.length)); $("#toCode").textContent = S.coding.length ? "Finished MCQ? Go to Coding Round →" : "Finished MCQ? Go to Practical Round →";
 }
 $("#q_opts").addEventListener("click", e => { const o = e.target.closest(".opt"); if (!o) return; S.ans[S.cur] = +o.dataset.i; renderQ(); save(); });
 $("#pgrid").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { S.cur = +b.dataset.i; renderQ(); save(); } });
 $("#q_prev").onclick = () => { if (S.cur > 0) { S.cur--; renderQ(); } };
-$("#q_next").onclick = () => { if (S.cur < S.paper.length - 1) { S.cur++; renderQ(); save(); } else if (S.coding.length) { save(); switchSection("code"); } else { renderQ(); save(); } };
-$("#toCode").onclick = () => { save(); switchSection("code"); window.scrollTo(0, 0); };
+$("#q_next").onclick = () => { if (S.cur < S.paper.length - 1) { S.cur++; renderQ(); save(); } else if (S.coding.length || S.prac.length) { save(); switchSection(S.coding.length ? "code" : "prac"); } else { renderQ(); save(); } };
+$("#toCode").onclick = () => { save(); switchSection(S.coding.length ? "code" : "prac"); window.scrollTo(0, 0); };
+function renderPrac() {
+  $("#v_prac").innerHTML = S.prac.map((p, i) => `<div class="pcard"><small>PRACTICAL TASK ${i + 1} OF ${S.prac.length}</small><h3>${esc(p.t)}</h3><p>${esc(p.q)}</p>
+    <textarea data-i="${i}" placeholder="Type your answer here. Be clear and step by step. You can write code, steps or points." spellcheck="false">${esc(p.a)}</textarea><div class="cnt" id="pc${i}">${p.a.length} characters</div></div>`).join("") +
+    `<p class="pnote">Practical answers are reviewed and marked by the Korlance team. Your answers save automatically.</p>`;
+  document.querySelectorAll("#v_prac textarea").forEach(t => t.oninput = () => { const i = +t.dataset.i; S.prac[i].a = t.value; $("#pc" + i).textContent = t.value.length + " characters"; clearTimeout(S._pt); S._pt = setTimeout(save, 600); });
+}
 $("#q_clear").onclick = () => { S.ans[S.cur] = -1; renderQ(); save(); };
 
 /* ---------------- Coding UI ---------------- */
@@ -325,7 +333,8 @@ const closeModal = () => $("#modal").classList.add("hidden");
 $("#submitBtn").onclick = () => {
   const un = S.ans.filter(a => a < 0).length;
   const codeInfo = S.coding.length ? `<br>Coding: ${S.coding.filter(c => c.res).length} of ${S.coding.length} problems evaluated (unevaluated code is auto-checked on submit).` : "";
-  modal("📝", "Submit your test?", `You have <b>${un}</b> unanswered MCQ${un === 1 ? "" : "s"}.${codeInfo}<br>You cannot change answers after submitting.`,
+  const pracInfo = S.prac.length ? `<br>Practical: ${S.prac.filter(p => p.a.trim()).length} of ${S.prac.length} tasks answered.` : "";
+  modal("📝", "Submit your test?", `You have <b>${un}</b> unanswered MCQ${un === 1 ? "" : "s"}.${codeInfo}${pracInfo}<br>You cannot change answers after submitting.`,
     [["Go back", "ghost", closeModal], ["Yes, Submit", "ok", () => { closeModal(); submitTest("Submitted by student"); }]]);
 };
 async function submitTest(reason) {
@@ -338,7 +347,7 @@ async function submitTest(reason) {
   const cod = S.coding.map(c => ({ id:c.p.id, title:c.p.title, lang:c.lang, passed:c.passed, total:c.total, marks:+(10 * c.passed / c.total).toFixed(1), code:c.code[c.lang] || "" }));
   const codeMarks = cod.reduce((n, c) => n + c.marks, 0);
   const payload = { action:"submit", id:S.id, email:S.student.email, domain:S.key, mcqScore:mcq, mcqTotal:S.paper.length, coding:cod, codingMarks:+codeMarks.toFixed(1), codingMax:cod.length * 10,
-    totalScore:+(mcq + codeMarks).toFixed(1), maxScore:S.paper.length + cod.length * 10, warnings:S.warns, warnLog:S.log.join(" | "), reason,
+    totalScore:+(mcq + codeMarks).toFixed(1), maxScore:S.paper.length + cod.length * 10, practical:S.prac.map(p => ({ title:p.t, question:p.q, answer:p.a })), warnings:S.warns, warnLog:S.log.join(" | "), reason,
     minutes:+((Date.now() - S.startAt) / 60000).toFixed(1),
     answers:S.paper.map((q, i) => `${i + 1}:${S.ans[i] < 0 ? "-" : "ABCD"[S.ans[i]]}${S.ans[i] === q.ans ? "+" : ""}`).join(" ") };
   S.payload = payload; try { localStorage.setItem("korlance_backup", JSON.stringify({ student:S.student, payload })); } catch (e) {}

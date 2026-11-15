@@ -88,6 +88,10 @@ function submit_(d) {
 
   const ans = sheet_('Answers', ['Reg ID', 'Name', 'Domain', 'MCQ answers (question no : chosen option, + = correct)']);
   ans.appendRow([d.id, sh.getRange(row, 3).getValue(), sh.getRange(row, 7).getValue(), d.answers]);
+  if (d.practical && d.practical.length) {
+    const ps = sheet_('Practical', ['Reg ID', 'Name', 'Domain', 'Task', 'Answer', 'Marks (enter manually)']);
+    d.practical.forEach(p => ps.appendRow([d.id, sh.getRange(row, 3).getValue(), sh.getRange(row, 7).getValue(), p.title, String(p.answer).slice(0, 45000), '']));
+  }
   if (d.coding.length) {
     const cs = sheet_('Code', ['Reg ID', 'Name', 'Problem', 'Language', 'Passed', 'Total', 'Marks', 'Submitted code']);
     d.coding.forEach(c => cs.appendRow([d.id, sh.getRange(row, 3).getValue(), c.title, c.lang, c.passed, c.total, c.marks, String(c.code).slice(0, 45000)]));
