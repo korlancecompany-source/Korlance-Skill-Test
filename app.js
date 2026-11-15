@@ -414,7 +414,7 @@ function renderFeedback() {
     if (!rating) return msg("Please select a star rating."); const btn = $("#fb_send"); btn.disabled = true;
     try { const r = await api({ action:"feedback", id:S.id, rating, difficulty:diff, comment:$("#fb_text").value.trim() }); if (!r.ok) throw new Error(r.error || "failed");
       try { localStorage.setItem(fk, "1"); } catch (e) {} box.innerHTML = '<p class="fbthanks">Thanks for your feedback!</p>'; }
-    catch (e) { btn.disabled = false; msg("Could not send feedback. Please try again."); }
+    catch (e) { btn.disabled = false; msg("Could not send feedback (" + (e.message || "error") + "). Please try again. Your test is already saved."); }
   };
 }
 function showFinal(at, again, reason, p, started, own) {

@@ -19,7 +19,7 @@ const HEADERS = ['Reg ID','Registered At','Name','College','Department','Scroll 
 function onOpen() { SpreadsheetApp.getUi().createMenu('Korlance').addItem('Refresh Results', 'refreshResults').addItem('Recover unsubmitted tests (from autosave)', 'recoverUnsubmitted').addToUi(); }
 function refreshResults() { refreshResults_(); SpreadsheetApp.getActive().toast('Results sheet updated'); }
 
-function doGet() { return ContentService.createTextOutput('Korlance Test Camp backend is running.'); }
+function doGet() { return ContentService.createTextOutput('Korlance Test Camp backend is running. Version 2026-11-15-c: register, submit, progress, feedback.'); }
 
 function doPost(e) {
   let d;
