@@ -116,10 +116,6 @@ label.f{display:block;font-size:12px;font-weight:600;color:#463a73;margin:10px 0
 .btn.go{background:linear-gradient(135deg,#17b97c,#0b8a5a);box-shadow:0 8px 20px #0b8a5a44;font-size:13px;padding:12px}
 @media(max-width:860px){.landing{grid-template-columns:1fr}.total strong{font-size:40px}}
 
-/* ---------- darker test screen ---------- */
-#screen-test{background:#1c1840}
-.tab{background:#2b2560;border-color:#3b3478;color:#b9aee8}.tab.on{background:#ece8f8;color:var(--p2)}
-.body{background:#ece8f8;border-color:#3b3478}
 /* ---------- final page ---------- */
 .done{max-width:560px}
 .dlogo{width:190px;max-width:70%;display:block;margin:0 auto 6px}
@@ -128,29 +124,6 @@ label.f{display:block;font-size:12px;font-weight:600;color:#463a73;margin:10px 0
 #d_h{font-size:26px;margin:4px 0 10px}
 .dtbl{border-collapse:collapse;margin:18px auto 4px;width:100%;max-width:440px;text-align:left;font-size:14px}
 .dtbl td{padding:10px 12px;border-bottom:1px solid var(--line);color:var(--mut)}.dtbl td b{color:var(--ink);word-break:break-all}
-
-/* ---------- full dark test screen ---------- */
-#screen-test .body{background:#141030;border-color:#2e2760;color:#ece8ff;--ink:#ece8ff;--mut:#a99fd6;--line:#34296b}
-#screen-test .qtext{color:#f3f0ff}
-#screen-test .opt{background:#1d1745;border-color:#34296b;color:#ece8ff}
-#screen-test .opt:hover{background:#251d58;border-color:#7b52e0}
-#screen-test .opt.sel{background:#33207a;border-color:#a066ff;box-shadow:0 0 0 3px #a066ff33}
-#screen-test .opt .l{background:#2c2362;color:#cdbcff}
-#screen-test .pgrid button{background:#1d1745;color:#b9aee8;border-color:#34296b}
-#screen-test .pgrid button.ans{background:var(--ok);border-color:var(--ok);color:#fff}
-#screen-test .pgrid button.cur{outline:3px solid #a066ff88;border-color:#a066ff}
-#screen-test .legend i.u{background:#1d1745;border-color:#34296b}
-#screen-test .btn.ghost{background:#1d1745;color:#d8ccff;border-color:#34296b}
-#screen-test .ptab{background:#1d1745;color:#b9aee8;border-color:#34296b}
-#screen-test .ptab.on{background:var(--p1);border-color:var(--p1);color:#fff}
-#screen-test .prob h3,#screen-test .prob{color:#ece8ff}
-#screen-test .prob h5{color:#c8b3ff}
-#screen-test .prob pre,#screen-test .res pre{background:#1d1745;border-color:#34296b;color:#ece8ff}
-#screen-test .badge{background:#4a1f3a;color:#ffb3b8}
-#screen-test .cin{background:#1d1745;color:#ece8ff;border-color:#34296b}
-#screen-test .rrow{color:#1a0b3d}
-#screen-test .sum{background:#2c2362;color:#e3d8ff}
-#screen-test .tbl td,#screen-test .tbl th{border-color:#34296b}#screen-test .tbl th{background:#2c2362}
 
 /* ---------- white theme with K watermark ---------- */
 .bg{background:radial-gradient(900px 520px at 100% 0,#f3ecff,transparent 60%),#fff}
@@ -172,3 +145,9 @@ label.f{display:block;font-size:12px;font-weight:600;color:#463a73;margin:10px 0
 .flow li:before{background:var(--p2);color:#fff}.flow li:after{background:var(--line)}
 .flow b{color:var(--ink)}.flow span{color:var(--mut)}
 .hero .note{color:var(--mut)}
+
+/* ---------- test screen: white + K watermark ---------- */
+#screen-test{background:transparent}
+.body{background:transparent;border:0;box-shadow:none}
+.tab.on{background:#fff;border-color:var(--p1);color:var(--p2);box-shadow:0 -3px 0 var(--p1) inset}
+.top{box-shadow:0 6px 24px #2a0a6b33}
