@@ -177,7 +177,7 @@ function curProb() { return S.coding[S.cp]; }
 function renderCode() {
   $("#ptabs").innerHTML = S.coding.map((c, i) => `<div class="ptab ${i === S.cp ? "on" : ""}" data-i="${i}">Problem ${i + 1}<em>${c.res ? c.passed + "/" + c.total : ""}</em></div>`).join("");
   const c = curProb(), p = c.p, samples = p.tests.filter(t => !t.hidden);
-  let h = `<span class="badge">${esc(p.difficulty)}</span><h3>${esc(p.title)}</h3><div>${esc(p.desc).replace(/\n/g, "<br>")}</div>
+  let h = `<h3>${esc(p.title)}</h3><div>${esc(p.desc).replace(/\n/g, "<br>")}</div>
     <h5>Input format</h5><pre>${esc(p.input)}</pre><h5>Output format</h5><pre>${esc(p.output)}</pre><h5>Constraints</h5><pre>${esc(p.constraints)}</pre>`;
   if (p.type === "sql") h += `<h5>Sample data (Test 1)</h5><pre>${esc(p.tests[0].setup.slice(0, 700))}${p.tests[0].setup.length > 700 ? " ..." : ""}</pre>`;
   else samples.forEach((t, i) => h += `<h5>Sample ${i + 1}</h5><b style="font-size:12px">Input</b><pre>${esc(t.input)}</pre><b style="font-size:12px">Output</b><pre>${esc(t.output)}</pre>`);
