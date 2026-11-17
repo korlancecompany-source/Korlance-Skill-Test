@@ -36,3 +36,16 @@ Extra tabs: "Answers" (every MCQ answer) and "Code" (submitted code per problem)
   A real MySQL server is not available free in the browser.
 - Coding is given only to domains that need it: Full Stack, Data Science, Cloud, AIML, Cyber Security,
   Python-DS, Python-ML, Data Analytics (SQL), IoT, Embedded, App Development.
+
+## Re-entry (student closed the test by mistake / network problem / wrong auto-submit)
+1. In the Sheet: select the student's row in "Students" > menu **Korlance > Allow re-entry for selected student**.
+   Enter extra minutes (0 = only the time the student still had left; time spent offline is not counted).
+2. Tell the student to close any other window running the test, open the test link and click
+   **"Re-enter here"** (below the registration form, or on the final page). They type the SAME email + mobile.
+3. The student continues with the same questions, MCQ answers, code and practical answers (from the last autosave,
+   at most ~1 minute old). Tab warnings restart from 0 (old warning log is kept). Change with REENTRY_RESET_WARNINGS in Code.gs.
+- Changed your mind? **Korlance > Cancel re-entry for selected student**.
+- Students sheet gets 3 new columns: Re-entry (ALLOWED / USED), Re-entry Extra Min, Re-entry Count. Every allow / re-entry is logged in the "Re-entry Log" sheet.
+- The first submission's rows in Answers / Code / Practical are replaced when the student submits again.
+- If the same student's old window is still open, it is stopped automatically (its submit is rejected).
+- Deploy: paste the new Code.gs, then Deploy > Manage deployments > Edit > New version. Upload new app.js, index.html, style.css.

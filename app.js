@@ -32,7 +32,7 @@ if (!C.REQUIRE_ACCESS_CODE) { const fc = $("#f_code"); if (fc) { fc.classList.ad
 function goFs() { if (C.REQUIRE_FULLSCREEN && !document.fullscreenElement) { try { const p = document.documentElement.requestFullscreen(); if (p && p.catch) p.catch(() => {}); } catch (e) {} } }
 
 let S = { student:null, id:null, key:"", paper:[], ans:[], cur:0, section:"mcq", coding:[], prac:[], cp:0, warns:0, log:[], startAt:0, endAt:0,
-          timer:null, active:false, submitted:false, lastV:0, editor:null, sqlP:null, busy:false };
+          timer:null, active:false, submitted:false, lastV:0, editor:null, sqlP:null, busy:false, rv:0 };
 
 /* ---------------- boot ---------------- */
 const dsel = $("#f_domain");
@@ -78,28 +78,38 @@ $("#regForm").addEventListener("submit", async e => {
   try {
     const b64 = f ? await fileToB64(f) : "";
     const res = await api({ action:"register", ...d, domainName:DNAME[d.domain], resume:f ? { name:f.name, mime:f.type || "application/octet-stream", data:b64 } : null });
+    if (res.duplicate && res.reenter) {
+      btn.disabled = false; btn.textContent = "Continue →";
+      fail("Your re-entry has been allowed by the Korlance team. Use the 'Re-enter here' option below the form."); openReenter(d.email, d.phone); return;
+    }
     if (res.duplicate) {
       S.student = { name:d.name, scroll:d.scroll, email:d.email }; S.key = res.domainName; S.id = res.id; S.submitted = true;
       btn.disabled = false; btn.textContent = "Continue →";
       showFinal(res.at ? new Date(res.at).toISOString() : new Date().toISOString(), true, "", null, res.status !== "Submitted"); return;
     }
     if (!res.ok) throw new Error(res.error || "Registration failed");
-    S.student = d; S.id = res.id; S.key = d.domain;
-    $("#i_name").textContent = d.name;
-    const hasCode = (CODING[d.domain] || []).length > 0, mins = C.TOTAL_MINUTES;
-    $("#i_info").innerHTML = `<div><b>${esc(DNAME[d.domain].split(" (")[0])}</b>Your domain</div><div><b>30</b>MCQ questions</div>` +
-      (hasCode ? `<div><b>${CODING[d.domain].length}</b>Coding problems</div>` : (PRAC[d.domain] ? `<div><b>${PRAC[d.domain].length}</b>Practical tasks</div>` : `<div><b>-</b>No coding round</div>`)) + `<div><b>${mins} min</b>Total time</div>`;
-    show("instr");
+    S.student = d; S.id = res.id; S.key = d.domain; toInstructions();
   } catch (ex) { fail(ex.message.includes("Failed to fetch") ? "Network error. Check your internet and try again." : ex.message); }
   btn.disabled = false; btn.textContent = "Continue →";
 });
+function toInstructions() {
+  const d = S.student, k = S.key, hasCode = (CODING[k] || []).length > 0, mins = C.TOTAL_MINUTES;
+  $("#i_name").textContent = d.name;
+  $("#i_info").innerHTML = `<div><b>${esc(DNAME[k].split(" (")[0])}</b>Your domain</div><div><b>30</b>MCQ questions</div>` +
+    (hasCode ? `<div><b>${CODING[k].length}</b>Coding problems</div>` : (PRAC[k] ? `<div><b>${PRAC[k].length}</b>Practical tasks</div>` : `<div><b>-</b>No coding round</div>`)) + `<div><b>${mins} min</b>Total time</div>`;
+  show("instr");
+}
 $("#agree").addEventListener("change", e => $("#startBtn").disabled = !e.target.checked);
 
 /* ---------------- start / resume ---------------- */
+function makePaper(k) {
+  const pool = QB[k] || [];
+  return shuffle(pool.map((_, i) => i)).slice(0, 30).map(pi => { const q = pool[pi], oo = shuffle(q.slice(1).map((_, i) => i)), opts = oo.map(i => q[1 + i]); return { q:q[0], opts, ans:opts.indexOf(q[1]), pi, oo }; });
+}
 $("#startBtn").addEventListener("click", async () => {
   goFs();
-  const k = S.key, pool = QB[k] || [];
-  S.paper = shuffle(pool).slice(0, 30).map(q => { const opts = shuffle(q.slice(1)); return { q:q[0], opts, ans:opts.indexOf(q[1]) }; });
+  const k = S.key;
+  S.paper = makePaper(k);
   S.ans = S.paper.map(() => -1); S.rev = S.paper.map(() => false);
   S.coding = (CODING[k] || []).map(p => ({ p, lang:p.langs[0], code:{}, res:null, passed:0, total:p.tests.length, dirty:false }));
   S.prac = S.coding.length ? [] : (PRAC[k] || []).map(p => ({ t:p.title, q:p.q, a:"" }));
@@ -120,6 +130,7 @@ function beginTest(resumed) {
   $("#t_domain").textContent = DNAME[S.key] + " | " + S.student.name;
   const tabs = $("#tabs"); tabs.innerHTML = `<div class="tab on" data-s="mcq">MCQ (30)</div>` + (S.coding.length ? `<div class="tab" data-s="code">Coding (${S.coding.length})</div>` : "") + (S.prac.length ? `<div class="tab" data-s="prac">Practical (${S.prac.length})</div>` : "");
   tabs.onclick = e => { const t = e.target.closest(".tab"); if (t) switchSection(t.dataset.s); };
+  switchSection("mcq");
   show("test"); renderQ(); updWarn(); tick(); clearInterval(S.timer); S.timer = setInterval(tick, 1000);
   attachGuards();
   if (resumed) violation("Page reloaded");
@@ -140,7 +151,7 @@ function tick() {
 }
 function save() {
   if (S.submitted) return;
-  try { localStorage.setItem(SKEY, JSON.stringify({ student:S.student, id:S.id, key:S.key, paper:S.paper, ans:S.ans, rev:S.rev, cur:S.cur, warns:S.warns, log:S.log, prac:S.prac, startAt:S.startAt, endAt:S.endAt,
+  try { localStorage.setItem(SKEY, JSON.stringify({ student:S.student, id:S.id, key:S.key, paper:S.paper, ans:S.ans, rev:S.rev, cur:S.cur, warns:S.warns, log:S.log, prac:S.prac, startAt:S.startAt, endAt:S.endAt, rv:S.rv || 0,
     coding:S.coding.map(c => ({ pid:c.p.id, lang:c.lang, code:c.code, res:c.res, passed:c.passed, total:c.total, dirty:c.dirty })), submitted:false })); } catch (e) {}
 }
 
@@ -357,6 +368,7 @@ function snapshot(reason) {
   return { id:S.id, email:S.student.email, domain:S.key, mcqScore:mcq, mcqTotal:S.paper.length, coding:cod, codingMarks:+codeMarks.toFixed(1), codingMax:cod.length * 10,
     totalScore:+(mcq + codeMarks).toFixed(1), maxScore:S.paper.length + cod.length * 10, practical:S.prac.map(p => ({ title:p.t, question:p.q, answer:p.a })), warnings:S.warns, warnLog:S.log.join(" | "), reason,
     minutes:+((Date.now() - S.startAt) / 60000).toFixed(1),
+    paper:S.paper.map(p => p.oo ? p.pi + "." + p.oo.join("") : ""), rev:(S.rev || []).map(x => x ? 1 : 0).join(""), rv:S.rv || 0,
     answers:S.paper.map((q, i) => `${i + 1}:${S.ans[i] < 0 ? "-" : "ABCD"[S.ans[i]]}${S.ans[i] === q.ans ? "+" : ""}`).join(" ") };
 }
 /* autosave to the server every minute (and when the tab is closed), so nothing is lost */
@@ -364,7 +376,7 @@ let progSig = "";
 setInterval(async () => {
   if (!S.active || S.submitted || S.busy || !C.APPS_SCRIPT_URL || !S.id) return;
   const snap = snapshot("In progress"); snap.action = "progress"; const sig = JSON.stringify(Object.assign({}, snap, { minutes:0 }));
-  if (sig === progSig) return; try { const r = await api(snap); if (r.ok) progSig = sig; } catch (e) {}
+  if (sig === progSig) return; try { const r = await api(snap); if (r.ok) progSig = sig; else if (r.stale) staleLock(); } catch (e) {}
 }, 60000);
 window.addEventListener("pagehide", () => { try { if (S.active && !S.submitted && !S.busy && C.APPS_SCRIPT_URL && S.id) { const snap = snapshot("In progress"); snap.action = "progress"; navigator.sendBeacon(C.APPS_SCRIPT_URL, JSON.stringify(snap)); } } catch (e) {} });
 async function pushBackup() {
@@ -382,8 +394,9 @@ async function submitTest(reason) {
   const payload = snapshot(reason); payload.action = "submit";
   if (C.CERTIFICATE !== false && window.makeCertificate) { try { payload.cert = (await window.makeCertificate({ name:S.student.name, domain:(DNAME[S.key] || S.key).split(" (")[0], id:S.id, scroll:S.student.scroll, college:S.student.college || "", date:new Date() })).b64; } catch (e) {} }
   S.payload = payload; try { localStorage.setItem("korlance_backup", JSON.stringify({ student:S.student, payload })); } catch (e) {}
-  let ok = false, lastErr = "";
-  for (let a = 0; a < 6 && !ok; a++) { try { const r = await api(payload); if (r.ok) ok = true; else lastErr = r.error; } catch (e) { lastErr = e.message; } if (!ok) await new Promise(r => setTimeout(r, 2000 * (a + 1))); }
+  let ok = false, lastErr = "", stale = false;
+  for (let a = 0; a < 6 && !ok; a++) { try { const r = await api(payload); if (r.ok) ok = true; else { lastErr = r.error; if (r.stale) { stale = true; break; } } } catch (e) { lastErr = e.message; } if (!ok) await new Promise(r => setTimeout(r, 2000 * (a + 1))); }
+  if (stale) { S.busy = false; staleLock(); return; }
   S.busy = false; closeModal(); detachGuards(); if (document.fullscreenElement) { try { document.exitFullscreen(); } catch (e) {} }
   if (ok) { S.submitted = true; try { localStorage.removeItem(SKEY); localStorage.removeItem("korlance_backup"); } catch (e) {} finishScreen(reason, payload); }
   else {
@@ -432,8 +445,73 @@ function showFinal(at, again, reason, p, started, own) {
   const showCert = own && C.CERTIFICATE !== false && window.makeCertificate;
   const CB = "\u2B07 Download Participation Certificate (PDF)";
   $("#d_actions").innerHTML = showCert ? `<button class="btn" id="certBtn" type="button">${CB}</button><p class="pnote">A copy is also sent to your email.</p>` : "";
+  $("#d_actions").insertAdjacentHTML("beforeend", '<p class="pnote">Test ended by mistake or lost connection? Ask the Korlance team to allow re-entry, then <a href="#" id="reenFromDone">re-enter here</a>.</p>');
+  $("#reenFromDone").onclick = e => { e.preventDefault(); openReenter(S.student && S.student.email); };
   if (showCert) $("#certBtn").onclick = async () => { const b = $("#certBtn"); b.disabled = true; b.textContent = "Preparing..."; try { await window.downloadCertificate(ci()); } catch (e) {} b.disabled = false; b.textContent = CB; };
   if (own) renderFeedback(); else $("#d_fb").innerHTML = "";
   show("done");
+}
+
+/* ---------------- re-entry (admin allows it from the Sheet) ---------------- */
+function openReenter(email, phone) {
+  show("reg"); $("#reenForm").classList.remove("hidden"); $("#reenOpen").classList.add("hidden");
+  if (email) $("#r_email").value = email; if (phone) $("#r_phone").value = phone;
+  setTimeout(() => $("#reenForm").scrollIntoView({ behavior:"smooth", block:"center" }), 50);
+}
+$("#reenOpen").onclick = e => { e.preventDefault(); openReenter(); };
+$("#reenForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const email = $("#r_email").value.trim().toLowerCase(), phone = $("#r_phone").value.trim(), err = $("#reenErr"), btn = $("#reenBtn");
+  const fail = m => { err.textContent = m; err.classList.remove("hidden"); };
+  err.classList.add("hidden");
+  if (!C.APPS_SCRIPT_URL) return fail("Demo mode: re-entry needs the backend.");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return fail("Enter the email you registered with.");
+  if (!/^[6-9]\d{9}$/.test(phone)) return fail("Enter your 10-digit mobile number.");
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Checking...';
+  try {
+    const res = await api({ action:"reenter", email, phone, totalMinutes:C.TOTAL_MINUTES });
+    if (!res.ok) throw new Error(res.error || "Re-entry failed");
+    applyReentry(res);
+  } catch (ex) { fail(/Failed to fetch|abort|NetworkError|JSON|Unexpected/i.test(ex.message) ? "Network error. Check your internet and try again." : ex.message); }
+  btn.disabled = false; btn.textContent = "Re-enter Test →";
+});
+function applyReentry(res) {
+  const k = (res.snap && res.snap.domain) || (DOMAINS.find(d => d[1] === res.domainName) || [])[0];
+  if (!k) throw new Error("Your domain could not be found. Please contact the Korlance team.");
+  try { localStorage.removeItem(DONE_KEY); localStorage.removeItem("korlance_backup"); localStorage.removeItem(SKEY); } catch (e) {}
+  clearInterval(S.timer);
+  S.student = res.student; S.id = res.id; S.key = k; S.rv = res.rv || 0; S.submitted = false; S.busy = false; S.active = false; S._w5 = 0; S._w1 = 0; S.cur = 0; S.cp = 0; S.payload = null;
+  const sn = res.snap;
+  if (!sn) { toInstructions(); return; }                       // registered but never started: normal start
+  const pool = QB[k] || []; let paper = null;
+  if (Array.isArray(sn.paper) && sn.paper.length) {
+    try { paper = sn.paper.map(t => { if (!t || t.indexOf(".") < 0) throw 0; const [pi, oo] = t.split("."), q = pool[+pi], ord = oo.split("").map(Number);
+      if (!q || ord.length !== q.length - 1) throw 0; const opts = ord.map(i => q[1 + i]); return { q:q[0], opts, ans:opts.indexOf(q[1]), pi:+pi, oo:ord }; }); } catch (e) { paper = null; }
+  }
+  S.ans = []; S.rev = [];
+  if (paper) {
+    S.paper = paper; S.ans = paper.map(() => -1); S.rev = paper.map(() => false);
+    String(sn.answers || "").split(" ").forEach(t => { const m = /^(\d+):([A-D-])/.exec(t); if (m && +m[1] - 1 < paper.length) S.ans[+m[1] - 1] = "ABCD".indexOf(m[2]); });
+    if (String(sn.rev || "").length === paper.length) S.rev = sn.rev.split("").map(x => x === "1");
+  } else {
+    S.paper = makePaper(k); S.ans = S.paper.map(() => -1); S.rev = S.paper.map(() => false);
+    setTimeout(() => toast("Your earlier MCQ answers could not be restored. Please answer the MCQs again. Your time and coding / practical work are restored."), 800);
+  }
+  S.coding = (CODING[k] || []).map(p => ({ p, lang:p.langs[0], code:{}, res:null, passed:0, total:p.tests.length, dirty:false }));
+  (sn.coding || []).forEach(x => { const c = S.coding.find(y => y.p.id === x.id); if (!c) return;
+    if (c.p.langs.indexOf(x.lang) >= 0) c.lang = x.lang; if (x.code) c.code[c.lang] = x.code; c.passed = x.passed || 0; });
+  S.prac = S.coding.length ? [] : (PRAC[k] || []).map(p => { const o = (sn.practical || []).find(y => y.title === p.title); return { t:p.title, q:p.q, a:o ? String(o.answer || "") : "" }; });
+  const now = Date.now(), used = Number(res.usedMin) || 0;
+  S.startAt = now - used * 60000; S.endAt = now + res.remainingMin * 60000;
+  S.warns = res.resetWarnings ? 0 : Math.min(Number(sn.warnings) || 0, C.MAX_TAB_WARNINGS - 1);
+  S.log = (sn.warnLog ? String(sn.warnLog).split(" | ") : []).concat("Re-entry allowed by admin (warnings " + (res.resetWarnings ? "reset" : "kept") + ") @ " + new Date().toLocaleTimeString());
+  goFs(); $("#i_name").textContent = S.student.name; beginTest();
+}
+function staleLock() {
+  S.submitted = true; S.active = false; S.busy = false; clearInterval(S.timer); detachGuards(); closeModal();
+  if (document.fullscreenElement) { try { document.exitFullscreen(); } catch (e) {} }
+  $("#d_ic").textContent = "\u2139\uFE0F"; $("#d_h").textContent = "Test opened in another window";
+  $("#d_p").textContent = "Your test was re-opened in another window or device, so this window is stopped. Please continue there. Nothing was lost from that session.";
+  $("#d_tbl").innerHTML = ""; $("#d_actions").innerHTML = ""; $("#d_fb").innerHTML = ""; show("done");
 }
 })();

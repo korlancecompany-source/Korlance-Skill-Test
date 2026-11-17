@@ -176,3 +176,8 @@ label.f{display:block;font-size:12px;font-weight:600;color:#463a73;margin:10px 0
 .pgrid button.rev{border-color:#f59e0b;box-shadow:0 0 0 3px #f59e0b66}
 .pgrid button.rev:not(.ans){background:#fff3dc;color:#9a5b00}
 .legend i.r{background:#fff3dc;border:2px solid #f59e0b}
+
+/* re-entry */
+.reen{margin-top:18px;padding-top:14px;border-top:1px dashed var(--line);font-size:13px;text-align:center}
+.reen a,.pnote a{color:var(--p2);font-weight:600}
+.reen form{text-align:left;margin-top:12px}

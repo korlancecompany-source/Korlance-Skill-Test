@@ -51,6 +51,16 @@
       <div class="err hidden" id="regErr"></div>
       <button class="btn block" id="regBtn" type="submit">Continue →</button>
     </form>
+    <div class="reen">
+      <a href="#" id="reenOpen">Test closed by mistake or network problem? Re-enter here</a>
+      <form id="reenForm" class="hidden" novalidate>
+        <p class="sub">First ask the Korlance team to allow your re-entry. Then type the same email and mobile number you registered with.</p>
+        <label class="f">Email *</label><input class="in" id="r_email" type="email" placeholder="you@gmail.com" autocomplete="email">
+        <label class="f">Mobile Number *</label><input class="in" id="r_phone" inputmode="numeric" maxlength="10" placeholder="10-digit number">
+        <div class="err hidden" id="reenErr"></div>
+        <button class="btn block" id="reenBtn" type="submit">Re-enter Test →</button>
+      </form>
+    </div>
   </div>
 </section>
 
